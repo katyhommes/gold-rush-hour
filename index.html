@@ -112,10 +112,10 @@ button:disabled{opacity:.5;cursor:default}
   <label>Deal if all‑in ≤ <input type="number" id="thresh" value="90" min="10" max="150"> % of melt</label>
   <label><input type="checkbox" id="incSilverJewelry"> Include sterling jewelry</label>
   <label><input type="checkbox" id="auto" checked> Auto‑refresh bids (2 min)</label>
-  <button id="scan">Scan now</button>
+  <button id="scan">Refresh now</button>
 </div>
 </details>
-<div id="status">Ready</div>
+<div id="status">Pulling the latest lots…</div>
 
 <section class="hot" aria-labelledby="hotTitle">
   <div class="hot-head"><h2 id="hotTitle">Hot and closing soon</h2><span class="note" id="hotNote"></span></div>
@@ -128,7 +128,7 @@ button:disabled{opacity:.5;cursor:default}
   <button class="tab" data-tab="unvalued">Needs a look<span class="n" id="n-unvalued"></span></button>
 </div>
 <div class="note" id="note"></div>
-<div id="list"><div class="empty">Click “Scan now” to search CTBids.</div></div>
+<div id="list"><div class="empty">Pulling the latest lots from CTBids, please wait. This takes about 10 seconds.</div></div>
 
 <script>
 const SALE = 'https://sale.ctbids.com/services/api/v1';
@@ -359,6 +359,7 @@ function evaluate(it, spot, opts) {
 async function scan() {
   const btn = $('scan');
   btn.disabled = true;
+  state.error = null;
   try {
     $('status').textContent = 'Loading spot prices…';
     await loadSpot();
@@ -384,7 +385,9 @@ async function scan() {
     state.scanned = raw.length;
     render();
   } catch (e) {
-    $('status').textContent = 'Error: ' + e.message;
+    state.error = e.message;
+    $('status').textContent = 'Couldn’t reach CTBids (' + e.message + '). Trying again in 15 minutes.';
+    render();
   } finally {
     btn.disabled = false;
   }
@@ -448,7 +451,7 @@ function renderHot() {
         ${pct}
       </div>
     </a>`;
-  }).join('') : '<div class="empty">Scanning…</div>';
+  }).join('') : `<div class="empty">${state.scannedAt ? 'No lots with bids are closing in the next two days.' : 'Pulling lots…'}</div>`;
 }
 
 function render() {
@@ -468,7 +471,7 @@ function render() {
   }[state.tab];
   const rows = groups[state.tab];
   if (!rows.length) {
-    $('list').innerHTML = `<div class="empty">${state.items.length ? 'Nothing here right now.' : 'Click “Scan now” to search CTBids.'}</div>`;
+    $('list').innerHTML = `<div class="empty">${state.items.length || state.scannedAt ? 'Nothing here right now.' : state.error ? 'Couldn’t reach CTBids. It will try again in 15 minutes, or open Settings and tap Refresh now.' : 'Pulling the latest lots from CTBids, please wait. This takes about 10 seconds.'}</div>`;
     return;
   }
   $('list').innerHTML = rows.map(x => {
