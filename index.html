@@ -25,12 +25,20 @@ h1 span{color:var(--gold)}
 .spot div{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-width:120px}
 .spot b{display:block;font-size:17px;font-variant-numeric:tabular-nums}
 .spot small{color:var(--muted)}
-.controls{margin:8px 24px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center}
+.settings{margin:8px 24px}
+.settings>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 14px;font-weight:600}
+.settings>summary::-webkit-details-marker{display:none}
+.settings>summary::after{content:"▾";margin-left:auto;color:var(--muted)}
+.settings[open]>summary{border-radius:12px 12px 0 0;border-bottom:0}
+.settings[open]>summary::after{content:"▴"}
+#sumHint{font-weight:400;color:var(--muted);font-size:13px}
+.controls{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center}
 .controls label{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px}
 .controls input[type=number]{width:64px;padding:5px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
 button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer}
 button:disabled{opacity:.5;cursor:default}
-#status{color:var(--muted);font-size:13px;margin-left:auto}
+#status{margin:6px 24px 0;color:var(--muted);font-size:13px}
+@media (min-width:701px){.settings>summary{display:none}}
 .tabs{display:flex;gap:6px;margin:14px 24px 0}
 .tab{background:var(--chip);color:var(--ink);font-weight:500;padding:7px 12px;border-radius:999px;font-size:13px}
 .tab.on{background:var(--ink);color:var(--bg)}
@@ -72,8 +80,13 @@ button:disabled{opacity:.5;cursor:default}
 .hcard .r b{color:var(--ink);font-variant-numeric:tabular-nums}
 .hcard .pct{justify-self:start;margin-top:2px}
 @media (max-width:700px){
-  header,.controls,.tabs,.note,#list,.hot{margin-left:16px;margin-right:16px;padding-left:0;padding-right:0}
-  .controls{padding:12px}
+  header,.settings,#status,.tabs,.note,#list,.hot{margin-left:16px;margin-right:16px;padding-left:0;padding-right:0}
+  .settings[open]>.controls{border-radius:0 0 12px 12px;border-top:0}
+  .controls{padding:12px;gap:12px 18px}
+  header{gap:10px}
+  .sub{font-size:12.5px}
+  .hot-grid{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+  .hcard{flex:0 0 44%;scroll-snap-align:start}
   .card{grid-template-columns:72px 1fr}
   .card img{width:72px;height:72px}
   .nums{grid-column:1/-1;min-width:0}
@@ -92,14 +105,17 @@ button:disabled{opacity:.5;cursor:default}
   </div>
 </header>
 
+<details class="settings" id="settings" open>
+<summary>Settings <span id="sumHint"></span></summary>
 <div class="controls">
   <label>Closing within <input type="number" id="hours" value="24" min="1" max="336"> hrs</label>
   <label>Deal if all‑in ≤ <input type="number" id="thresh" value="90" min="10" max="150"> % of melt</label>
   <label><input type="checkbox" id="incSilverJewelry"> Include sterling jewelry</label>
   <label><input type="checkbox" id="auto" checked> Auto‑refresh bids (2 min)</label>
   <button id="scan">Scan now</button>
-  <span id="status">Ready</span>
 </div>
+</details>
+<div id="status">Ready</div>
 
 <section class="hot" aria-labelledby="hotTitle">
   <div class="hot-head"><h2 id="hotTitle">Hot and closing soon</h2><span class="note" id="hotNote"></span></div>
@@ -493,6 +509,14 @@ document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
   render();
 });
 $('scan').onclick = scan;
+// Settings start collapsed on phones; on wider screens they stay open and the toggle is hidden.
+const phone = matchMedia('(max-width:700px)');
+const syncSettings = () => { $('settings').open = !phone.matches; };
+syncSettings();
+phone.addEventListener('change', syncSettings);
+const syncHint = () => { $('sumHint').textContent = `· deals ≤ ${$('thresh').value}% of melt · ${$('hours').value} hrs`; };
+syncHint();
+['thresh', 'hours'].forEach(id => $(id).addEventListener('input', syncHint));
 $('thresh').onchange = () => refreshBids();
 $('incSilverJewelry').onchange = scan;
 
