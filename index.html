@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gold Rush Hour</title>
+<style>
+:root{
+  --bg:#f6f5f2;--panel:#fff;--ink:#1d1d1f;--muted:#6b6b70;--line:#e4e2dc;
+  --gold:#b8860b;--gold-soft:#fbf3dc;--good:#1f7a4d;--good-soft:#e3f4ea;
+  --warn:#a15c00;--warn-soft:#fdf0dc;--bad:#b42318;--chip:#efeee9;--accent:#7a1f3d;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141416;--panel:#1d1d20;--ink:#ececee;--muted:#9a9aa2;--line:#2e2e33;
+  --gold:#e0b44c;--gold-soft:#2e2715;--good:#4cc38a;--good-soft:#16291f;
+  --warn:#f0a948;--warn-soft:#2e2312;--bad:#f97066;--chip:#2a2a2e;--accent:#e06a93;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header{padding:20px 24px 8px;display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between}
+h1{margin:0;font-size:22px;letter-spacing:-.01em}
+h1 span{color:var(--gold)}
+.sub{color:var(--muted);font-size:13px;margin-top:2px}
+.spot{display:flex;gap:10px}
+.spot div{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-width:120px}
+.spot b{display:block;font-size:17px;font-variant-numeric:tabular-nums}
+.spot small{color:var(--muted)}
+.controls{margin:8px 24px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center}
+.controls label{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px}
+.controls input[type=number]{width:64px;padding:5px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink)}
+button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer}
+button:disabled{opacity:.5;cursor:default}
+#status{color:var(--muted);font-size:13px;margin-left:auto}
+.tabs{display:flex;gap:6px;margin:14px 24px 0}
+.tab{background:var(--chip);color:var(--ink);font-weight:500;padding:7px 12px;border-radius:999px;font-size:13px}
+.tab.on{background:var(--ink);color:var(--bg)}
+.tab .n{opacity:.65;margin-left:4px}
+.note{margin:10px 24px 0;color:var(--muted);font-size:12.5px}
+#list{margin:12px 24px 40px;display:grid;gap:10px}
+.card{display:grid;grid-template-columns:96px 1fr auto;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;align-items:center}
+.card.deal{border-color:var(--good);box-shadow:inset 4px 0 0 var(--good)}
+.card img{width:96px;height:96px;object-fit:cover;border-radius:8px;background:var(--chip)}
+.title{font-weight:600;color:var(--ink);text-decoration:none}
+.title:hover{text-decoration:underline}
+.meta{color:var(--muted);font-size:12.5px;margin-top:3px}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.chip{background:var(--chip);border-radius:6px;padding:2px 7px;font-size:12px}
+.chip.gold{background:var(--gold-soft);color:var(--gold)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.nums{text-align:right;font-variant-numeric:tabular-nums;min-width:190px}
+.nums .row{display:flex;justify-content:space-between;gap:12px;font-size:13px}
+.nums .row span:first-child{color:var(--muted)}
+.big{font-size:18px;font-weight:700}
+.pct{display:inline-block;margin-top:5px;border-radius:6px;padding:2px 8px;font-weight:700;font-size:13px}
+.pct.good{background:var(--good-soft);color:var(--good)}
+.pct.meh{background:var(--chip);color:var(--muted)}
+.pct.bad{color:var(--bad)}
+.time{font-weight:600}
+.time.soon{color:var(--bad)}
+.empty{color:var(--muted);text-align:center;padding:40px}
+.hot{margin:14px 24px 0}
+.hot-head{display:flex;flex-wrap:wrap;gap:2px 12px;align-items:baseline;margin-bottom:8px}
+.hot h2{margin:0;font-size:17px}
+.hot-head .note{margin:0}
+.hot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:8px}
+.hcard{border:1px solid var(--line);background:var(--panel);border-radius:12px;overflow:hidden;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;min-width:0}
+.hcard:hover{border-color:var(--gold)}
+.hcard img{width:100%;aspect-ratio:1;object-fit:cover;background:var(--chip);display:block}
+.hcard .b{padding:8px;display:grid;gap:3px}
+.hcard .t{font-weight:600;font-size:13px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.hcard .r{display:flex;justify-content:space-between;gap:6px;font-size:12px;color:var(--muted)}
+.hcard .r b{color:var(--ink);font-variant-numeric:tabular-nums}
+.hcard .pct{justify-self:start;margin-top:2px}
+@media (max-width:700px){
+  header,.controls,.tabs,.note,#list,.hot{margin-left:16px;margin-right:16px;padding-left:0;padding-right:0}
+  .controls{padding:12px}
+  .card{grid-template-columns:72px 1fr}
+  .card img{width:72px;height:72px}
+  .nums{grid-column:1/-1;min-width:0}
+}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Gold <span>Rush Hour</span></h1>
+    <div class="sub">Coins, gold &amp; silver from CTBids.com auctions closing soon, priced against live melt value. Unofficial, not affiliated with CTBids.</div>
+  </div>
+  <div class="spot" title="Live spot from gold-api.com, refreshed every 2 minutes">
+    <div><small>Gold spot</small><b id="au">—</b></div>
+    <div><small>Silver spot</small><b id="ag">—</b></div>
+  </div>
+</header>
+
+<div class="controls">
+  <label>Closing within <input type="number" id="hours" value="24" min="1" max="336"> hrs</label>
+  <label>Deal if all‑in ≤ <input type="number" id="thresh" value="90" min="10" max="150"> % of melt</label>
+  <label><input type="checkbox" id="incSilverJewelry"> Include sterling jewelry</label>
+  <label><input type="checkbox" id="auto" checked> Auto‑refresh bids (2 min)</label>
+  <button id="scan">Scan now</button>
+  <span id="status">Ready</span>
+</div>
+
+<section class="hot" aria-labelledby="hotTitle">
+  <div class="hot-head"><h2 id="hotTitle">Hot and closing soon</h2><span class="note" id="hotNote"></span></div>
+  <div class="hot-grid" id="hot"></div>
+</section>
+
+<div class="tabs">
+  <button class="tab on" data-tab="deals">Deals<span class="n" id="n-deals"></span></button>
+  <button class="tab" data-tab="valued">All valued<span class="n" id="n-valued"></span></button>
+  <button class="tab" data-tab="unvalued">Needs a look<span class="n" id="n-unvalued"></span></button>
+</div>
+<div class="note" id="note"></div>
+<div id="list"><div class="empty">Click “Scan now” to search CTBids.</div></div>
+
+<script>
+const SALE = 'https://sale.ctbids.com/services/api/v1';
+const API = 'https://api.ctbids.com/services/api/v1';
+const OZT = 31.1035;
+const DEFAULT_BP = 18; // CTBids buyer's premium when an item doesn't report one
+
+const state = { spot: { au: 0, ag: 0 }, items: [], tab: 'deals' };
+const $ = id => document.getElementById(id);
+const money = n => n == null || isNaN(n) ? '—' : '$' + n.toLocaleString(undefined, { maximumFractionDigits: n < 100 ? 2 : 0, minimumFractionDigits: n < 100 ? 2 : 0 });
+const utcStr = d => d.toISOString().slice(0, 19).replace('T', ' ');
+const parseUtc = s => new Date(s.replace(' ', 'T') + 'Z');
+
+async function post(url, body) {
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json();
+  if (j.status !== 'success') throw new Error(j.message || 'request failed');
+  return j;
+}
+
+async function loadSpot() {
+  const [au, ag] = await Promise.all(['XAU', 'XAG'].map(s => fetch('https://api.gold-api.com/price/' + s).then(r => r.json())));
+  state.spot = { au: au.price, ag: ag.price };
+  state.spotAt = new Date(au.updatedAt || Date.now());
+  $('au').textContent = money(au.price);
+  $('ag').textContent = money(ag.price);
+}
+
+const FIELDS = ['id', 'title', 'description', 'saleid', 'itemseourl', 'thumbnailurl', 'itemclosetime', 'categoryGroup',
+  'category', 'buyerspremium', 'city', 'state', 'isshippable', 'itemtypename', 'buynowprice'];
+
+async function fetchQuery(extraFilter, untilUtc) {
+  const out = [];
+  let next = null;
+  for (let page = 0; page < 30; page++) {
+    const body = {
+      sort: [{ field: 'itemclosetime', direction: 'asc' }],
+      field: FIELDS,
+      filter: [
+        { field: 'salestatus', value: 'Started', op: '=', join: 'AND' },
+        { field: 'itemstatus', value: 'Ready', op: '=', join: 'AND' },
+        { field: 'itemclosetime', value: untilUtc, op: '<=', join: 'AND' },
+        extraFilter,
+      ],
+      page: next ? { size: 100, next } : { size: 100 },
+    };
+    const j = await post(SALE + '/search/item/new/list', body);
+    out.push(...j.data);
+    next = j.page && j.page.keyset && j.page.keyset.next;
+    if (!next || j.data.length < 100) break;
+  }
+  return out;
+}
+
+async function fetchBids(ids) {
+  const map = {};
+  for (let i = 0; i < ids.length; i += 100) {
+    const j = await post(API + '/buyer/auction/item/current/bid', { data: { itemIds: ids.slice(i, i + 100) } });
+    for (const b of j.data) map[b.itemid] = b;
+  }
+  return map;
+}
+
+/* ---------- valuation ---------- */
+const stripHtml = s => (s || '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ');
+const NOT_GOLD = /gold[\s-]*(filled|plated|plate|tone|toned|wash|electroplate)|\bg\.?f\.?\b|\bhge\b|\bgep\b|\brgp\b|rolled gold|vermeil|1\/20|\bgold color/i;
+const NOT_SILVER = /silver[\s-]*(plate|plated|tone|toned|color)|silverplate|nickel silver|german silver|\bepns\b|silver certificate|\bep\b/i;
+
+function goldPurity(t) {
+  if (NOT_GOLD.test(t)) return null;
+  // Mixed-karat lots are valued at the lowest karat mentioned.
+  const ks = [...t.matchAll(/\b(24|22|18|14|10|9)\s*-?\s*(k|kt|karat|carat)\b/gi)].map(m => +m[1]);
+  if (ks.length) { const k = Math.min(...ks); return k === 24 ? 0.999 : k / 24; }
+  if (/gold/i.test(t)) {
+    const m = t.match(/\b(999|916|750|585|417|375)\b/);
+    if (m) return +m[1] / 1000;
+  }
+  return null;
+}
+function silverPurity(t) {
+  if (NOT_SILVER.test(t)) return null;
+  if (/sterling|\b925\b/i.test(t)) return 0.925;
+  if (/\b950\b/.test(t) && /silver/i.test(t)) return 0.95;
+  if (/coin silver/i.test(t)) return 0.9;
+  if (/\b800\b/.test(t) && /silver/i.test(t)) return 0.8;
+  return null;
+}
+// Returns grams, preferring a weight stated in the title over the description.
+function findGrams(title, desc) {
+  for (const t of [title, desc]) {
+    const vals = [];
+    let m;
+    const g = /(\d+(?:\.\d+)?)\s*(?:g|gr|grs|gm|gms|gram|grams)\b/gi;
+    while ((m = g.exec(t))) vals.push(+m[1]);
+    const dwt = /(\d+(?:\.\d+)?)\s*(?:dwt|pennyweights?)\b/gi;
+    while ((m = dwt.exec(t))) vals.push(+m[1] * 1.55517);
+    const ozt = /(\d+(?:\.\d+)?)\s*(?:ozt|troy\s*oz|troy\s*ounces?|t\.\s?oz)\b/gi;
+    while ((m = ozt.exec(t))) vals.push(+m[1] * OZT);
+    if (!vals.length) {
+      // Plain "oz" is ambiguous; treat it as avoirdupois (the smaller unit) to stay conservative.
+      const oz = /(\d*\.?\d+)\s*(?:oz|ounces?)\b/gi;
+      while ((m = oz.exec(t))) vals.push(+m[1] * 28.3495);
+    }
+    const ok = vals.filter(v => v > 0 && v < 5000);
+    if (ok.length) return Math.max(...ok);
+  }
+  return null;
+}
+
+// Pure-metal troy ounces per coin.
+const COINS = [
+  { re: /double eagle|saint[\s-]*gaudens|\$20\s*(gold|liberty|indian)/i, m: 'au', oz: 0.9675, name: '$20 gold' },
+  { re: /\$10\s*(gold|liberty|indian)|ten dollar gold/i, m: 'au', oz: 0.48375, name: '$10 gold' },
+  { re: /\$5\s*(gold|liberty|indian)|half eagle|five dollar gold/i, m: 'au', oz: 0.24187, name: '$5 gold' },
+  { re: /\$2\.?50?\s*(gold|liberty|indian)|quarter eagle/i, m: 'au', oz: 0.12094, name: '$2.50 gold' },
+  { re: /\$1\s*gold|gold dollar/i, m: 'au', oz: 0.04837, name: '$1 gold' },
+  { re: /krugerrand/i, m: 'au', oz: 1, name: 'Krugerrand', frac: true },
+  { re: /(gold).*(eagle|buffalo|maple|britannia|philharmonic|panda|bar|round|bullion)|(eagle|buffalo|maple|britannia|philharmonic|bar|round|bullion).*gold/i, m: 'au', oz: 1, name: 'Gold bullion', frac: true, needsOz: true },
+  { re: /silver eagle|american eagle.*silver|silver.*american eagle/i, m: 'ag', oz: 1, name: 'Silver Eagle' },
+  { re: /morgan|peace dollar|trade dollar/i, m: 'ag', oz: 0.77344, name: 'Silver dollar' },
+  { re: /eisenhower|\bike dollar/i, m: 'ag', oz: 0.31610, name: '40% Ike', needsSilver: true },
+  { re: /walking liberty|franklin|barber half|silver half|half dollar|kennedy/i, m: 'ag', oz: 0.36169, name: '90% half', half: true },
+  { re: /standing liberty|barber quarter|washington quarter|silver quarter|\bquarters?\b/i, m: 'ag', oz: 0.18084, name: '90% quarter', pre65: true },
+  { re: /mercury|roosevelt|barber dime|silver dime|\bdimes?\b/i, m: 'ag', oz: 0.07234, name: '90% dime', pre65: true },
+  { re: /war nickel|silver nickel|wartime nickel/i, m: 'ag', oz: 0.05626, name: 'War nickel' },
+  { re: /(silver).*(bar|round|bullion|ounce|\boz)|(bar|round|bullion).*silver/i, m: 'ag', oz: 1, name: 'Silver bullion', frac: true, needsOz: true },
+];
+const ROLL = { '90% dime': 50, '90% quarter': 40, '90% half': 20, 'War nickel': 40, 'Silver dollar': 20 };
+
+function coinQty(title, type) {
+  let m;
+  if (/\broll\b/i.test(title) && ROLL[type]) {
+    m = title.match(/\b(\d+)\s*rolls?\b/i);
+    return (m ? +m[1] : 1) * ROLL[type];
+  }
+  if ((m = title.match(/^\s*\(?(\d{1,4})\)?\s*[-x]?\s*[a-z(]/i)) && +m[1] < 1700) return +m[1];
+  if ((m = title.match(/\blot of\s*\(?(\d{1,4})\)?/i))) return +m[1];
+  if ((m = title.match(/\((\d{1,4})\)/)) && +m[1] < 1700) return +m[1];
+  if ((m = title.match(/\b(\d{1,4})\s*(?:pcs|pieces|coins|x)\b/i)) && +m[1] < 1700) return +m[1];
+  if ((m = title.match(/\bx\s?(\d{1,4})\b/i))) return +m[1];
+  if (/state(hood)?.*proof.*set|proof.*state(hood)?.*set/i.test(title) && type === '90% quarter') return 5;
+  // "1936-P & 1941-S Walking Halves" → one coin per listed date.
+  const dates = title.match(/\b(17|18|19|20)\d{2}(-[a-z])?\b/gi) || [];
+  if (dates.length > 1 && /&|,|\band\b/.test(title)) return dates.length;
+  return 1;
+}
+
+function valueCoin(title, desc) {
+  if (/clad|state(hood)? quarter|proof set|mint set|\bcopy\b|replica|token|medal(?!lion)/i.test(title) && !/silver/i.test(title)) return null;
+  const t = title;
+  const years = (t.match(/\b(17|18|19|20)\d{2}\b/g) || []).map(Number);
+  const maxYr = years.length ? Math.max(...years) : null;
+
+  const face = t.match(/\$(\d+(?:\.\d{2})?)\s*face/i);
+  if (face && /silver|90%|junk/i.test(t)) {
+    const oz = +face[1] * 0.715;
+    return { metal: 'ag', ozt: oz, how: `$${face[1]} face 90% silver` };
+  }
+
+  for (const c of COINS) {
+    if (!c.re.test(t)) continue;
+    if (NOT_SILVER.test(t) && c.m === 'ag') return null;
+    let oz = c.oz;
+    if (c.half) {
+      if (/kennedy/i.test(t)) {
+        if (maxYr && maxYr >= 1965 && maxYr <= 1970) oz = 0.14792;
+        else if (!(maxYr === 1964 || /90%|1964/.test(t))) continue;
+      } else if (maxYr && maxYr > 1964 && !/silver/i.test(t)) continue;
+    }
+    if (c.pre65 && !(/silver|90%/i.test(t) || (maxYr && maxYr <= 1964) || /mercury|barber|standing liberty/i.test(t))) continue;
+    if (c.needsSilver && !/silver|40%/i.test(t)) continue;
+    if (c.frac) {
+      const f = t.match(/(1\/10|1\/4|1\/2|1\/20|\d+(?:\.\d+)?)\s*(?:troy\s*)?(?:oz|ounce)/i);
+      if (f) oz = f[1].includes('/') ? 1 / +f[1].split('/')[1] : +f[1];
+      else if (c.needsOz) {
+        const g = findGrams(t, '');
+        if (!g) continue;
+        oz = g / OZT;
+      }
+    }
+    const qty = coinQty(t, c.name);
+    return { metal: c.m, ozt: oz * qty, how: `${qty > 1 ? qty + ' × ' : ''}${c.name} (${(oz).toFixed(4)} ozt ea)` };
+  }
+  return null;
+}
+
+function evaluate(it, spot, opts) {
+  const title = it.title || '';
+  const desc = stripHtml(it.description);
+  const all = title + ' ' + desc;
+  const isCoinish = it.categoryGroup === 'Coins' || /\bcoins?\b|bullion|\bbars?\b|\brounds?\b|dollar|eagle|krugerrand|dimes?|quarters?|halves|half dollar/i.test(title);
+
+  let v = null;
+  if (isCoinish) {
+    const c = valueCoin(title, desc);
+    if (c) v = { ...c, kind: 'coin' };
+  }
+  if (!v) {
+    const gp = goldPurity(title) ?? goldPurity(desc);
+    const sp = gp ? null : (silverPurity(title) ?? silverPurity(desc));
+    if (gp || (sp && (opts.silverJewelry || isCoinish))) {
+      const gross = findGrams(title, desc);
+      const metal = gp ? 'au' : 'ag', purity = gp || sp;
+      // Subtract stated gemstone weights (1 ct = 0.2 g).
+      const stoneG = [...desc.matchAll(/(\d*\.?\d+)\s*(?:ctw|tcw|ct\.?\s?t\.?w\.?|cts?|carats?)\b(?!\s*(?:gold|yellow|white|rose))/gi)]
+        .map(m => +m[1]).filter(c => c > 0 && c < 100 && ![9, 10, 14, 18, 22, 24].includes(c)).reduce((a, c) => a + c * 0.2, 0);
+      const grams = gross && stoneG < gross ? gross - stoneG : gross;
+      if (grams) v = { kind: 'jewelry', metal, ozt: grams * purity / OZT, how: `${grams.toFixed(1)} g${stoneG >= 0.05 && stoneG < gross ? ` (after −${stoneG.toFixed(1)} g stones)` : ''} × ${(purity * 100).toFixed(1)}% ${metal === 'au' ? 'gold' : 'silver'}`, grams };
+      else return { relevant: true, unvalued: true, reason: gp ? `${Math.round(gp * 24)}K gold — weight not in listing` : 'Silver — weight not in listing', metal };
+    }
+  }
+  if (!v) {
+    // Still surface coins & gold so nothing interesting is hidden.
+    if (isCoinish || /\bgold\b/i.test(title) && !NOT_GOLD.test(title)) return { relevant: true, unvalued: true, reason: isCoinish ? 'Coin — no melt value detected (numismatic / clad / unclear)' : 'Mentions gold — karat or weight unclear' };
+    return { relevant: false };
+  }
+  v.melt = v.ozt * (v.metal === 'au' ? spot.au : spot.ag);
+  v.relevant = true;
+  v.flags = [];
+  if (v.kind === 'coin' && /\b(pcgs|ngc|anacs|icg|ms-?\d{2}|pf-?\d{2}|proof|uncirculated|better date|key date|rare|first strike)\b/i.test(title)) v.flags.push('Numismatic — worth more than melt');
+  if (v.metal === 'au' && v.kind === 'jewelry' && new Set([...all.matchAll(/\b(24|22|18|14|10|9)\s*-?\s*(?:k|kt|karat)\b/gi)].map(m => m[1])).size > 1) v.flags.push('Mixed karats — valued at lowest');
+  if (v.kind === 'jewelry' && /diamond|stone|pearl|gem|jade|opal|ruby|sapphire|emerald|garnet|amethyst/i.test(all)) v.flags.push('Weight may include stones');
+  if (v.kind === 'jewelry' && /\b(\d+(?:\.\d+)?)\s*(?:g|grams?)\b.*\b(\d+(?:\.\d+)?)\s*(?:g|grams?)\b/i.test(desc)) v.flags.push('Multiple weights listed');
+  return v;
+}
+
+/* ---------- scan ---------- */
+async function scan() {
+  const btn = $('scan');
+  btn.disabled = true;
+  try {
+    $('status').textContent = 'Loading spot prices…';
+    await loadSpot();
+    const hours = Math.max(1, +$('hours').value || 24);
+    const until = utcStr(new Date(Date.now() + hours * 3600e3));
+    $('status').textContent = 'Searching CTBids…';
+    const queries = [
+      { field: 'categoryGroup', value: [['Coins', 'Jewelry']], op: 'IN', join: 'AND' },
+      { field: 'title', value: 'gold', op: 'LIKE', join: 'AND' },
+      { field: 'title', value: 'silver', op: 'LIKE', join: 'AND' },
+      { field: 'title', value: 'sterling', op: 'LIKE', join: 'AND' },
+      { field: 'title', value: 'bullion', op: 'LIKE', join: 'AND' },
+    ];
+    const results = await Promise.all(queries.map(q => fetchQuery(q, until)));
+    const byId = new Map();
+    results.flat().forEach(it => byId.set(it.id, it));
+    const raw = [...byId.values()];
+    const opts = { silverJewelry: $('incSilverJewelry').checked };
+    state.items = raw.map(it => ({ it, v: evaluate(it, state.spot, opts) })).filter(x => x.v.relevant);
+    $('status').textContent = `Fetching current bids for ${state.items.length} lots…`;
+    await refreshBids();
+    state.scannedAt = new Date();
+    state.scanned = raw.length;
+  } catch (e) {
+    $('status').textContent = 'Error: ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function refreshBids() {
+  if (!state.items.length) return render();
+  await loadSpot();
+  const bids = await fetchBids(state.items.map(x => x.it.id));
+  const thresh = (+$('thresh').value || 90) / 100;
+  for (const x of state.items) {
+    const b = bids[x.it.id] || {};
+    x.bid = b.bidprice ?? x.it.buynowprice ?? null;
+    x.bids = b.bidcount ?? 0;
+    x.inc = b.incrementvalue ?? 1;
+    if (b.itemclosetime) x.it.itemclosetime = b.itemclosetime;
+    x.bp = (x.it.buyerspremium ?? DEFAULT_BP) / 100;
+    const nextBid = x.bid == null ? null : (x.bids > 0 ? x.bid + x.inc : x.bid);
+    x.allIn = nextBid == null ? null : nextBid * (1 + x.bp);
+    if (!x.v.unvalued) {
+      x.v.melt = x.v.ozt * (x.v.metal === 'au' ? state.spot.au : state.spot.ag);
+      x.ratio = x.allIn != null ? x.allIn / x.v.melt : null;
+      x.maxBid = x.v.melt * thresh / (1 + x.bp);
+      x.deal = x.ratio != null && x.ratio <= thresh;
+    }
+  }
+  render();
+}
+
+/* ---------- render ---------- */
+function timeLeft(s) {
+  const ms = parseUtc(s) - Date.now();
+  if (ms <= 0) return { txt: 'Closed', soon: true };
+  const h = Math.floor(ms / 3600e3), m = Math.floor(ms % 3600e3 / 60e3), sec = Math.floor(ms % 60e3 / 1e3);
+  return { txt: h >= 24 ? `${Math.floor(h / 24)}d ${h % 24}h` : h ? `${h}h ${m}m` : `${m}m ${sec}s`, soon: ms < 3600e3 };
+}
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+const fmtDate = d => d.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+function renderHot() {
+  const now = Date.now();
+  const open = state.items.filter(x => parseUtc(x.it.itemclosetime) > now && x.bids > 0);
+  let hrs = 6, pool = [];
+  for (hrs of [6, 12, 24, 48]) {
+    pool = open.filter(x => parseUtc(x.it.itemclosetime) - now <= hrs * 3600e3);
+    if (pool.length >= 6) break;
+  }
+  const hot = pool.sort((a, b) => b.bids - a.bids || (a.ratio ?? 9) - (b.ratio ?? 9)).slice(0, 6)
+    .sort((a, b) => parseUtc(a.it.itemclosetime) - parseUtc(b.it.itemclosetime));
+  $('hotNote').textContent = hot.length ? `Most-bid lots closing in the next ${hrs} hours` : '';
+  $('hot').innerHTML = hot.length ? hot.map(x => {
+    const it = x.it, tl = timeLeft(it.itemclosetime);
+    const url = `https://ctbids.com/estate-sale/${it.saleid}/item/${it.id}/${encodeURIComponent(it.itemseourl || '')}`;
+    const pct = x.ratio == null ? '' : `<span class="pct ${x.deal ? 'good' : x.ratio > 1 ? 'bad' : 'meh'}">${Math.round(x.ratio * 100)}% of melt</span>`;
+    return `<a class="hcard" href="${url}" target="_blank" rel="noopener">
+      <img loading="lazy" src="${esc(it.thumbnailurl)}" alt="">
+      <div class="b">
+        <div class="t">${esc(it.title)}</div>
+        <div class="r"><span>Closes in</span><span class="time ${tl.soon ? 'soon' : ''}" data-close="${esc(it.itemclosetime)}">${tl.txt}</span></div>
+        <div class="r"><span>${x.bids} bids</span><b>${money(x.bid)}</b></div>
+        ${pct}
+      </div>
+    </a>`;
+  }).join('') : '<div class="empty">Scanning…</div>';
+}
+
+function render() {
+  renderHot();
+  if (state.scannedAt) $('status').textContent = `${state.scanned} lots last scanned ${fmtDate(state.scannedAt)} · spot prices as of ${fmtDate(state.spotAt)}`;
+  const live = state.items.filter(x => parseUtc(x.it.itemclosetime) > Date.now());
+  const groups = {
+    deals: live.filter(x => x.deal).sort((a, b) => a.ratio - b.ratio),
+    valued: live.filter(x => !x.v.unvalued).sort((a, b) => parseUtc(a.it.itemclosetime) - parseUtc(b.it.itemclosetime)),
+    unvalued: live.filter(x => x.v.unvalued).sort((a, b) => parseUtc(a.it.itemclosetime) - parseUtc(b.it.itemclosetime)),
+  };
+  for (const k in groups) $('n-' + k).textContent = groups[k].length;
+  $('note').textContent = {
+    deals: 'Lots where the next bid plus buyer’s premium is at or under your threshold of melt value. Shipping and sales tax are not included. Always check photos and the description before bidding.',
+    valued: 'Every lot with a computable melt value, soonest closing first.',
+    unvalued: 'Coins and gold that look interesting but don’t state karat/weight in text (often it’s only in the photos).',
+  }[state.tab];
+  const rows = groups[state.tab];
+  if (!rows.length) {
+    $('list').innerHTML = `<div class="empty">${state.items.length ? 'Nothing here right now.' : 'Click “Scan now” to search CTBids.'}</div>`;
+    return;
+  }
+  $('list').innerHTML = rows.map(x => {
+    const it = x.it, v = x.v, tl = timeLeft(it.itemclosetime);
+    const url = `https://ctbids.com/estate-sale/${it.saleid}/item/${it.id}/${it.itemseourl || ''}`;
+    const pctCls = x.ratio == null ? 'meh' : x.deal ? 'good' : x.ratio > 1 ? 'bad' : 'meh';
+    const chips = [
+      `<span class="chip">${esc(it.category || it.categoryGroup)}</span>`,
+      v.how ? `<span class="chip gold">${esc(v.how)}</span>` : '',
+      v.reason ? `<span class="chip warn">${esc(v.reason)}</span>` : '',
+      ...(v.flags || []).map(f => `<span class="chip warn">${esc(f)}</span>`),
+      it.isshippable ? '<span class="chip">Ships</span>' : '<span class="chip warn">Pickup only</span>',
+    ].join('');
+    const numbers = v.unvalued ? `
+        <div class="row"><span>Current bid</span><span class="big">${money(x.bid)}</span></div>
+        <div class="row"><span>Bids</span><span>${x.bids}</span></div>
+        <div class="row"><span>All‑in (next bid + ${Math.round(x.bp * 100)}%)</span><span>${money(x.allIn)}</span></div>` : `
+        <div class="row"><span>Melt value</span><span class="big">${money(v.melt)}</span></div>
+        <div class="row"><span>Current bid · ${x.bids} bids</span><span>${money(x.bid)}</span></div>
+        <div class="row"><span>All‑in (next bid + ${Math.round(x.bp * 100)}%)</span><span>${money(x.allIn)}</span></div>
+        <div class="row"><span>Bid up to</span><span><b>${money(x.maxBid)}</b></span></div>
+        <span class="pct ${pctCls}">${x.ratio == null ? '—' : Math.round(x.ratio * 100) + '% of melt'}</span>`;
+    return `<div class="card ${x.deal ? 'deal' : ''}">
+      <a href="${url}" target="_blank" rel="noopener"><img loading="lazy" src="${esc(it.thumbnailurl)}" alt=""></a>
+      <div>
+        <a class="title" href="${url}" target="_blank" rel="noopener">${esc(it.title)}</a>
+        <div class="meta">${esc(it.city)}, ${esc(it.state)} · closes in <span class="time ${tl.soon ? 'soon' : ''}" data-close="${it.itemclosetime}">${tl.txt}</span></div>
+        <div class="chips">${chips}</div>
+      </div>
+      <div class="nums">${numbers}</div>
+    </div>`;
+  }).join('');
+}
+
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => {
+  state.tab = b.dataset.tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t === b));
+  render();
+});
+$('scan').onclick = scan;
+$('thresh').onchange = () => refreshBids();
+$('incSilverJewelry').onchange = scan;
+
+setInterval(() => document.querySelectorAll('[data-close]').forEach(el => {
+  const tl = timeLeft(el.dataset.close);
+  el.textContent = tl.txt;
+  el.classList.toggle('soon', tl.soon);
+}), 1000);
+setInterval(() => { if ($('auto').checked && state.items.length) refreshBids().catch(() => {}); }, 120e3);
+setInterval(() => { if ($('auto').checked) scan(); }, 15 * 60e3);
+
+scan();
+</script>
+</body>
+</html>
