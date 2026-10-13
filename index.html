@@ -118,7 +118,7 @@ button:disabled{opacity:.5;cursor:default}
 <div id="status">Pulling the latest lots…</div>
 
 <section class="hot" aria-labelledby="hotTitle">
-  <div class="hot-head"><h2 id="hotTitle">Hot and closing soon</h2><span class="note" id="hotNote"></span></div>
+  <div class="hot-head"><h2 id="hotTitle">Best deals closing soon</h2><span class="note" id="hotNote"></span></div>
   <div class="hot-grid" id="hot"></div>
 </section>
 
@@ -329,6 +329,8 @@ function evaluate(it, spot, opts) {
   if (!v) {
     const gp = goldPurity(title) ?? goldPurity(desc);
     const sp = gp ? null : (silverPurity(title) ?? silverPurity(desc));
+    // Gold mixed with sterling: the weight can't be split between the two metals.
+    if (gp && silverPurity(title)) return { relevant: true, unvalued: true, reason: 'Gold and silver mixed — weight can’t be split' };
     if (gp || (sp && (opts.silverJewelry || isCoinish))) {
       const gross = findGrams(title, desc);
       const metal = gp ? 'au' : 'ag', purity = gp || sp;
@@ -336,7 +338,7 @@ function evaluate(it, spot, opts) {
       const stoneG = [...desc.matchAll(/(\d*\.?\d+)\s*(?:ctw|tcw|ct\.?\s?t\.?w\.?|cts?|carats?)\b(?!\s*(?:gold|yellow|white|rose))/gi)]
         .map(m => +m[1]).filter(c => c > 0 && c < 100 && ![9, 10, 14, 18, 22, 24].includes(c)).reduce((a, c) => a + c * 0.2, 0);
       const grams = gross && stoneG < gross ? gross - stoneG : gross;
-      if (grams) v = { kind: 'jewelry', metal, ozt: grams * purity / OZT, how: `${grams.toFixed(1)} g${stoneG >= 0.05 && stoneG < gross ? ` (after −${stoneG.toFixed(1)} g stones)` : ''} × ${(purity * 100).toFixed(1)}% ${metal === 'au' ? 'gold' : 'silver'}`, grams };
+      if (grams) v = { kind: 'jewelry', metal, ozt: grams * purity / OZT, how: `${grams.toFixed(1)} g${stoneG >= 0.05 && stoneG < gross ? ` (after −${stoneG.toFixed(1)} g stones)` : ''} × ${(purity * 100).toFixed(1)}% ${metal === 'au' ? 'gold' : 'silver'}`, grams, stonesSubtracted: stoneG >= 0.05 };
       else return { relevant: true, unvalued: true, reason: gp ? `${Math.round(gp * 24)}K gold — weight not in listing` : 'Silver — weight not in listing', metal };
     }
   }
@@ -350,8 +352,19 @@ function evaluate(it, spot, opts) {
   v.flags = [];
   if (v.kind === 'coin' && /\b(pcgs|ngc|anacs|icg|ms-?\d{2}|pf-?\d{2}|proof|uncirculated|better date|key date|rare|first strike)\b/i.test(title)) v.flags.push('Numismatic — worth more than melt');
   if (v.metal === 'au' && v.kind === 'jewelry' && new Set([...all.matchAll(/\b(24|22|18|14|10|9)\s*-?\s*(?:k|kt|karat)\b/gi)].map(m => m[1])).size > 1) v.flags.push('Mixed karats — valued at lowest');
-  if (v.kind === 'jewelry' && /diamond|stone|pearl|gem|jade|opal|ruby|sapphire|emerald|garnet|amethyst/i.test(all)) v.flags.push('Weight may include stones');
-  if (v.kind === 'jewelry' && /\b(\d+(?:\.\d+)?)\s*(?:g|grams?)\b.*\b(\d+(?:\.\d+)?)\s*(?:g|grams?)\b/i.test(desc)) v.flags.push('Multiple weights listed');
+  if (v.kind === 'jewelry') {
+    // Beads, pearls and large stones can be most of the listed weight, so the melt estimate is unreliable.
+    if (/pearl|bead|onyx|lapis|jade|opal|turquoise|coral|amber|cameo|agate|malachite|quartz|crystal|enamel|shell|glass|stones?\b|cabochon|cubic zirconia|\bcz\b/i.test(all)) {
+      v.flags.push('Weight likely includes beads or stones');
+      v.lowConfidence = true;
+    } else if (/diamond|ruby|sapphire|emerald|garnet|amethyst|topaz|citrine|peridot|aquamarine|tanzanite|gem/i.test(all) && !v.stonesSubtracted) {
+      v.flags.push('Weight may include small stones');
+    }
+    if (/\b(\d+(?:\.\d+)?)\s*(?:g|grams?)\b.*\b(\d+(?:\.\d+)?)\s*(?:g|grams?)\b/i.test(desc)) {
+      v.flags.push('Multiple weights listed');
+      v.lowConfidence = true;
+    }
+  }
   return v;
 }
 
@@ -429,29 +442,32 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '
 const fmtDate = d => d.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
 function renderHot() {
   const now = Date.now();
-  const open = state.items.filter(x => parseUtc(x.it.itemclosetime) > now && x.bids > 0);
+  // Only lots under the deal threshold count; cheapest relative to melt wins.
+  const open = state.items.filter(x => x.deal && !x.v.lowConfidence && parseUtc(x.it.itemclosetime) > now);
   let hrs = 6, pool = [];
   for (hrs of [6, 12, 24, 48]) {
     pool = open.filter(x => parseUtc(x.it.itemclosetime) - now <= hrs * 3600e3);
     if (pool.length >= 6) break;
   }
-  const hot = pool.sort((a, b) => b.bids - a.bids || (a.ratio ?? 9) - (b.ratio ?? 9)).slice(0, 6)
+  const hot = pool.sort((a, b) => a.ratio - b.ratio).slice(0, 6)
     .sort((a, b) => parseUtc(a.it.itemclosetime) - parseUtc(b.it.itemclosetime));
-  $('hotNote').textContent = hot.length ? `Most-bid lots closing in the next ${hrs} hours` : '';
+  $('hotNote').textContent = hot.length ? `Cheapest compared to melt value, closing in the next ${hrs} hours` : '';
   $('hot').innerHTML = hot.length ? hot.map(x => {
     const it = x.it, tl = timeLeft(it.itemclosetime);
     const url = `https://ctbids.com/estate-sale/${it.saleid}/item/${it.id}/${encodeURIComponent(it.itemseourl || '')}`;
-    const pct = x.ratio == null ? '' : `<span class="pct ${x.deal ? 'good' : x.ratio > 1 ? 'bad' : 'meh'}">${Math.round(x.ratio * 100)}% of melt</span>`;
+    const pct = `<span class="pct good">${Math.round(x.ratio * 100)}% of melt</span>`;
+    const warn = x.v.flags && x.v.flags.length ? `<span class="chip warn" title="${esc(x.v.flags.join('; '))}">Check details</span>` : '';
     return `<a class="hcard" href="${url}" target="_blank" rel="noopener">
       <img loading="lazy" src="${esc(it.thumbnailurl)}" alt="">
       <div class="b">
         <div class="t">${esc(it.title)}</div>
         <div class="r"><span>Closes in</span><span class="time ${tl.soon ? 'soon' : ''}" data-close="${esc(it.itemclosetime)}">${tl.txt}</span></div>
         <div class="r"><span>${x.bids} bids</span><b>${money(x.bid)}</b></div>
-        ${pct}
+        <div class="r"><span>Bid up to</span><b>${money(x.maxBid)}</b></div>
+        <div class="chips">${pct}${warn}</div>
       </div>
     </a>`;
-  }).join('') : `<div class="empty">${state.scannedAt ? 'No lots with bids are closing in the next two days.' : 'Pulling lots…'}</div>`;
+  }).join('') : `<div class="empty">${state.scannedAt ? `No lots under ${$('thresh').value}% of melt are closing in the next two days.` : 'Pulling lots…'}</div>`;
 }
 
 function render() {
