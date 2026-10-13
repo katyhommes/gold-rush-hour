@@ -366,6 +366,7 @@ async function scan() {
     await refreshBids();
     state.scannedAt = new Date();
     state.scanned = raw.length;
+    render();
   } catch (e) {
     $('status').textContent = 'Error: ' + e.message;
   } finally {
